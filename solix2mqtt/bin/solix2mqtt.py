@@ -95,7 +95,8 @@ def announce_sensor( client: mqtt.Client, topic: str, name: str, unique_id: str,
     if json_attributes_topic != None: msg["json_attributes_topic"] = json_attributes_topic
     CONSOLE.info(f"Announcing sensor: {msg}")
     CONSOLE.info("")
-    client.publish( topic, json.dumps( msg ) )
+    return msg
+    #client.publish( topic, json.dumps( msg ) )
 
 def announce_sensors(client, device_list):
     client.loop_start()
@@ -107,7 +108,8 @@ def announce_sensors(client, device_list):
 
 def announce_sensors_for_site(client: mqtt.Client, part_num: str, device_name: str):
     py_name = device_name.lower().replace(" ", "_")
-    announce_sensor(
+    sensor_list = []
+    sensor_list.append( announce_sensor(
         client,
         f"homeassistant/sensor/{part_num}/battery_level/config",
         f"{device_name} Battery Level",
@@ -116,10 +118,10 @@ def announce_sensors_for_site(client: mqtt.Client, part_num: str, device_name: s
         "{{ ( value_json.battery_power | float ) * 100 }}",
         "battery",
         "%"
-    )
+    ))
 
     # Publish photovoltaic power sensor
-    announce_sensor(
+    sensor_list.append( announce_sensor(
         client,
         f"homeassistant/sensor/{part_num}/photovoltaic_power/config",
         f"{device_name} Photovoltaic Power",
@@ -129,10 +131,10 @@ def announce_sensors_for_site(client: mqtt.Client, part_num: str, device_name: s
         "power",
         "measurement",
         "W"
-    )
+    ))
 
     # Publish output power sensor
-    announce_sensor(
+    sensor_list.append( announce_sensor(
         client,
         f"homeassistant/sensor/{part_num}/output_power/config",
         f"{device_name} Output Power",
@@ -142,10 +144,10 @@ def announce_sensors_for_site(client: mqtt.Client, part_num: str, device_name: s
         "power",
         "measurement",
         "W"
-    )
+    ))
 
     # Publish charging power sensor
-    announce_sensor(
+    sensor_list.append( announce_sensor(
         client,
         f"homeassistant/sensor/{part_num}/charging_power/config",
         f"{device_name} Charging Power",
@@ -154,17 +156,17 @@ def announce_sensors_for_site(client: mqtt.Client, part_num: str, device_name: s
         "{{ value_json.charging_power | float }}",
         "power",
         "W"
-    )
+    ))
 
     # Publish charging status
-    announce_sensor(
+    sensor_list.append( announce_sensor(
         client,
         f"homeassistant/sensor/{part_num}/charging_status/config",
         f"{device_name} Charging Status",
         f"{py_name}_charging_status",
         f"{S2M_MQTT_TOPIC}/{part_num}/device_param",
         "{{ value_json.charging_status }}"
-    )
+    ))
 
 def get_site_id(site_list, site_name):
     for site in site_list:
@@ -177,10 +179,30 @@ async def fetch_and_publish_sites(solix: api.AnkerSolixApi, client: mqtt.Client,
     for device in device_list.get("solarbank_list"):
         part_num = device["device_pn"]
         device_name = device["device_name"]
+
+        dev_payload = {
+            "dev": {
+                "ids": device["device_sn"],
+                "name": device_name,
+                "mf": "Anker Solix",
+                "mdl": part_num,
+                "sw": device["main_version"],
+                "sn": device["device_sn"],
+                "hw": device["wireless_type"]
+            },
+            "o": {
+                "name": "solix2mqtt",
+                "sw": "1.0",
+                "url": "https://github.com/ShadowKitty42/homeassistant-addons"
+            },
+            "cmps": { },
+            "state_topic": f"{part_num}/state"
+        }
+        dev_payload["cmp"] = announce_sensors_for_site(client, part_num, device_name)
         
-        device_param_json = json.dumps( device )
+        device_param_json = json.dumps( dev_payload )
         CONSOLE.info(f"Device Param: {device_param_json}")
-        client.publish(f"{S2M_MQTT_TOPIC}/{part_num}/device_param", device_param_json)
+        client.publish(f"{S2M_MQTT_TOPIC}/device/{part_num}/config", device_param_json)
 
     client.loop_stop()
 
@@ -192,7 +214,7 @@ async def main() -> None:
             )
             client = connect_mqtt()
             device_list = await solix.get_user_devices();
-            announce_sensors(client, device_list)
+            #announce_sensors(client, device_list)
             while True:
                 await fetch_and_publish_sites(solix, client, device_list)
                 time.sleep(S2M_POLL_INTERVAL)
