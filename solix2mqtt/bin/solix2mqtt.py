@@ -97,21 +97,23 @@ def announce_sensor( client: mqtt.Client, topic: str, name: str, unique_id: str,
     CONSOLE.info("")
     client.publish( topic, json.dumps( msg ) )
 
-def announce_sensors(client, site_list):
+def announce_sensors(client, device_list):
     client.loop_start()
-    for site in site_list.get("site_list"):
-        site_name = site["site_name"]
-        announce_sensors_for_site(client, site_name)
+    for device in device_list.get("solarbank_list"):
+        part_num = device["device_pn"]
+        device_name = device["device_name"]
+        announce_sensors_for_site(client, part_num, device_name)
     client.loop_stop()
 
-def announce_sensors_for_site(client: mqtt.Client, site_name: str):
+def announce_sensors_for_site(client: mqtt.Client, part_num: str, device_name: str):
+    py_name = device_name.lower().replace(" ", "_")
     announce_sensor(
         client,
-        "homeassistant/sensor/solarbank_e1600/battery_level/config",
-        f"Solarbank E1600 {site_name} Battery Level",
-        f"solarbank_e1600_{site_name}_battery_level",
-        f"{S2M_MQTT_TOPIC}/{site_name}/scene_info",
-        "{{ ( value_json.solarbank_info.total_battery_power | float ) * 100 }}",
+        f"homeassistant/sensor/{part_num}/battery_level/config",
+        f"{device_name} Battery Level",
+        f"{py_name}_battery_level",
+        f"{S2M_MQTT_TOPIC}/{part_num}/device_param",
+        "{{ ( value_json.battery_power | float ) * 100 }}",
         "battery",
         "%"
     )
@@ -119,37 +121,24 @@ def announce_sensors_for_site(client: mqtt.Client, site_name: str):
     # Publish photovoltaic power sensor
     announce_sensor(
         client,
-        "homeassistant/sensor/solarbank_e1600/photovoltaic_power/config",
-        f"Solarbank E1600 {site_name} Photovoltaic Power",
-        f"solarbank_e1600_{site_name}_photovoltaic_power",
-        f"{S2M_MQTT_TOPIC}/{site_name}/scene_info",
-        "{{ value_json.solarbank_info.total_photovoltaic_power | float }}",
+        f"homeassistant/sensor/{part_num}/photovoltaic_power/config",
+        f"{device_name} Photovoltaic Power",
+        f"{py_name}_photovoltaic_power",
+        f"{S2M_MQTT_TOPIC}/{part_num}/device_param",
+        "{{ value_json.photovoltaic_power | float }}",
         "power",
         "measurement",
         "W"
     )
 
-    # Publish photovoltaic yield sensor
-    announce_sensor(
-        client,
-        "homeassistant/sensor/solarbank_e1600/photovoltaic_yield/config",
-        f"Solarbank E1600 {site_name} Photovoltaic Yield",
-        f"solarbank_e1600_{site_name}_photovoltaic_yield",
-        f"{S2M_MQTT_TOPIC}/{site_name}/scene_info",
-        "{{ value_json.statistics[0].total | float }}",
-        "energy",
-        "measurement",
-        "kWh"
-    )
-
     # Publish output power sensor
     announce_sensor(
         client,
-        "homeassistant/sensor/solarbank_e1600/output_power/config",
-        f"Solarbank E1600 {site_name} Output Power",
-        f"solarbank_e1600_{site_name}_output_power",
-        f"{S2M_MQTT_TOPIC}/{site_name}/scene_info",
-        "{{ value_json.solarbank_info.total_output_power | float }}",
+        f"homeassistant/sensor/{part_num}/output_power/config",
+        f"{device_name} Output Power",
+        f"{py_name}_output_power",
+        f"{S2M_MQTT_TOPIC}/{part_num}/device_param",
+        "{{ value_json.output_power | float }}",
         "power",
         "measurement",
         "W"
@@ -158,85 +147,23 @@ def announce_sensors_for_site(client: mqtt.Client, site_name: str):
     # Publish charging power sensor
     announce_sensor(
         client,
-        "homeassistant/sensor/solarbank_e1600/charging_power/config",
-        f"Solarbank E1600 {site_name} Charging Power",
-        f"solarbank_e1600_{site_name}_charging_power",
-        f"{S2M_MQTT_TOPIC}/{site_name}/scene_info",
-        "{{ value_json.solarbank_info.total_charging_power | float }}",
+        f"homeassistant/sensor/{part_num}/charging_power/config",
+        f"{device_name} Charging Power",
+        f"{py_name}_charging_power",
+        f"{S2M_MQTT_TOPIC}/{part_num}/device_param",
+        "{{ value_json.charging_power | float }}",
         "power",
         "W"
-    )
-
-    # Publish last update
-    announce_sensor(
-        client,
-        "homeassistant/sensor/solarbank_e1600/last_update/config",
-        f"Solarbank E1600 {site_name} Last Update",
-        f"solarbank_e1600_{site_name}_last_update",
-        f"{S2M_MQTT_TOPIC}/{site_name}/scene_info",
-        "{{ value_json.solarbank_info.updated_time }}"
     )
 
     # Publish charging status
     announce_sensor(
         client,
-        "homeassistant/sensor/solarbank_e1600/charging_status/config",
-        f"Solarbank E1600 {site_name} Charging Status",
-        f"solarbank_e1600_{site_name}_charging_status",
-        f"{S2M_MQTT_TOPIC}/{site_name}/scene_info",
-        "{{ value_json.solarbank_info.solarbank_list[0].charging_status }}"
-    )
-
-    # Publish statistics co2 savings
-    announce_sensor(
-        client,
-        "homeassistant/sensor/solarbank_e1600/co2_savings/config",
-        f"Solarbank E1600 {site_name} CO2 Savings",
-        f"solarbank_e1600_{site_name}_co2_savings",
-        f"{S2M_MQTT_TOPIC}/{site_name}/scene_info",
-        "{{ value_json.statistics[1].total }}",
-        "weight",
-        "kg"
-    )
-
-    # Publish statistics saved costs
-    announce_sensor(
-        client,
-        "homeassistant/sensor/solarbank_e1600/saved_costs/config",
-        f"Solarbank E1600 {site_name} Saved Costs",
-        f"solarbank_e1600_{site_name}_saved_costs",
-        f"{S2M_MQTT_TOPIC}/{site_name}/scene_info",
-        "{{ value_json.statistics[3].total }}",
-        "monetary",
-        "EUR"
-    )
-
-    # Publish schedule
-    announce_sensor(
-        client,
-        "homeassistant/sensor/solarbank_e1600/schedule/config",
-        f"Solarbank E1600 {site_name} Schedule",
-        f"solarbank_e1600_{site_name}_schedule",
-        f"{S2M_MQTT_TOPIC}/{site_name}/schedule",
-        "{{value_json.ranges|length}}",
-        None,
-        None,
-        None,
-        f"{S2M_MQTT_TOPIC}/{site_name}/schedule"
-    )
-
-    # Publish site homepage
-    announce_sensor(
-        client,
-        "homeassistant/sensor/solarbank_e1600/site_homepage/config",
-        f"Solarbank E1600 {site_name} Site Homepage",
-        f"solarbank_e1600_{site_name}_site_homepage",
-        f"{S2M_MQTT_TOPIC}/{site_name}",
-        "{{value_json.friendly_name}}",
-        None,
-        None,
-        None,
-        f"{S2M_MQTT_TOPIC}/{site_name}"
+        f"homeassistant/sensor/{part_num}/charging_status/config",
+        f"{device_name} Charging Status",
+        f"{py_name}_charging_status",
+        f"{S2M_MQTT_TOPIC}/{part_num}/device_param",
+        "{{ value_json.charging_status }}"
     )
 
 def get_site_id(site_list, site_name):
@@ -245,26 +172,15 @@ def get_site_id(site_list, site_name):
             return site["site_id"]
     return None
 
-async def fetch_and_publish_sites(solix: api.AnkerSolixApi, client: mqtt.Client, site_list):
+async def fetch_and_publish_sites(solix: api.AnkerSolixApi, client: mqtt.Client, device_list):
     client.loop_start()
-    for site in site_list.get("site_list"):
-        site_id = site["site_id"]
-        site_name = site["site_name"]
-
-        site_homepage = await solix.get_homepage()
-        site_homepage_json = json.dumps( site_homepage )
-        CONSOLE.info(f"Site Homepage: {site_homepage_json}")
-        client.publish(f"{S2M_MQTT_TOPIC}/{site_name}", site_homepage_json)
-
-        scene_info = await solix.get_scene_info(siteId=site_id)
-        scene_info_json = json.dumps( scene_info )
-        CONSOLE.info(f"Scene Info: {scene_info_json}")
-        client.publish(f"{S2M_MQTT_TOPIC}/{site_name}/scene_info", scene_info_json)
-
-        device_param = await solix.get_device_parm(siteId=site_id)
-        device_param_json = json.dumps( device_param )
+    for device in device_list.get("solarbank_list"):
+        part_num = device["device_pn"]
+        device_name = device["device_name"]
+        
+        device_param_json = json.dumps( device )
         CONSOLE.info(f"Device Param: {device_param_json}")
-        client.publish(f"{S2M_MQTT_TOPIC}/{site_name}/device_param", device_param_json)
+        client.publish(f"{S2M_MQTT_TOPIC}/{part_num}/device_param", device_param_json)
 
     client.loop_stop()
 
@@ -275,10 +191,10 @@ async def main() -> None:
                 S2M_USER, S2M_PASSWORD, S2M_COUNTRY, websession, _LOGGER
             )
             client = connect_mqtt()
-            site_list = await solix.get_site_list();
-            announce_sensors(client, site_list)
+            device_list = await solix.get_user_devices();
+            announce_sensors(client, device_list)
             while True:
-                await fetch_and_publish_sites(solix, client, site_list)
+                await fetch_and_publish_sites(solix, client, device_list)
                 time.sleep(S2M_POLL_INTERVAL)
 
     except Exception as exception:
