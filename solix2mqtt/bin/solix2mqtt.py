@@ -228,7 +228,7 @@ async def main() -> None:
 # run async main
 if __name__ == "__main__":
     try:
-        logging.info("hello")
+        _LOGGER.info("hello")
         asyncio.run(main())
     except Exception as err:
         CONSOLE.info(f"{type(err)}: {err}")
