@@ -209,13 +209,13 @@ async def fetch_and_publish_sites(solix: api.AnkerSolixApi, client: mqtt.Client,
 async def main() -> None:
     try:
         async with ClientSession() as websession:
-            CONSOLE.info("Connecting to Anker")
+            print("Connecting to Anker")
             solix = api.AnkerSolixApi(
                 S2M_USER, S2M_PASSWORD, S2M_COUNTRY, websession, _LOGGER
             )
-            CONSOLE.info("Connecting to MQTT")
+            print("Connecting to MQTT")
             client = connect_mqtt()
-            CONSOLE.info("Fetching devices")
+            print("Fetching devices")
             device_list = await solix.get_user_devices();
             #announce_sensors(client, device_list)
             while True:
